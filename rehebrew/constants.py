@@ -12,8 +12,9 @@ MOD_NOREPEAT = 0x4000
 # Windows messages
 WM_HOTKEY = 0x0312
 
-# Hotkey identifier
-HOTKEY_ID = 1
+# Hotkey identifiers
+HOTKEY_ID = 1           # Hebrew conversion (Ctrl+Shift+H)
+HOTKEY_ID_ENGLISH = 2   # English conversion (Ctrl+Shift+E)
 
 # Keyboard input constants
 INPUT_KEYBOARD = 1

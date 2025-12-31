@@ -13,13 +13,15 @@ from ..utils import ICO_FILE
 
 def show_about_dialog(
     shortcut: str,
+    shortcut_english: str,
     logo_image: Optional[Image.Image] = None
 ) -> None:
     """
     Show the About dialog.
     
     Args:
-        shortcut: Current keyboard shortcut to display
+        shortcut: Current keyboard shortcut for Hebrew
+        shortcut_english: Current keyboard shortcut for English
         logo_image: Optional logo image to display
     """
     from PIL import ImageTk
@@ -88,16 +90,17 @@ def show_about_dialog(
     desc_frame = ttk.Frame(main, style='About.TFrame')
     desc_frame.pack(fill=tk.X, pady=(0, 20))
     
-    desc_text = "Convert English-layout gibberish to Hebrew text\nwith a simple keyboard shortcut."
+    desc_text = "Convert text typed with the wrong keyboard layout\nusing simple keyboard shortcuts."
     ttk.Label(desc_frame, text=desc_text, style='Desc.TLabel', justify=tk.CENTER).pack()
     
-    shortcut_text = f"Current shortcut: {shortcut.upper()}"
+    shortcuts_text = f"{shortcut.upper()} → Hebrew\n{shortcut_english.upper()} → English"
     ttk.Label(
         desc_frame,
-        text=shortcut_text,
+        text=shortcuts_text,
         style='Desc.TLabel',
         foreground='#0078D4',
-        font=('Segoe UI', 10, 'bold')
+        font=('Segoe UI', 10, 'bold'),
+        justify=tk.CENTER
     ).pack(pady=(8, 0))
     
     # Separator

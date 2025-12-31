@@ -13,11 +13,12 @@ import pyperclip
 from plyer import notification
 
 from .config import Config
-from .converter import convert_to_hebrew
+from .converter import convert_to_hebrew, convert_to_english
 from .keyboard import send_ctrl_c, send_ctrl_v
 from .hotkey import HotkeyListener
 from .tray import TrayIcon
 from .dialogs import show_about_dialog, show_options_dialog
+from .constants import HOTKEY_ID, HOTKEY_ID_ENGLISH
 
 
 class ReHebrew:
@@ -27,10 +28,19 @@ class ReHebrew:
         self.config = Config()
         self.running = True
         self._hotkey_listener: Optional[HotkeyListener] = None
+        self._hotkey_listener_english: Optional[HotkeyListener] = None
         self._tray: Optional[TrayIcon] = None
     
     def do_conversion(self) -> None:
-        """Perform the text conversion (copy, convert, paste)"""
+        """Perform the text conversion to Hebrew (copy, convert, paste)"""
+        self._do_conversion_internal(convert_to_hebrew, "Hebrew")
+    
+    def do_conversion_english(self) -> None:
+        """Perform the text conversion to English (copy, convert, paste)"""
+        self._do_conversion_internal(convert_to_english, "English")
+    
+    def _do_conversion_internal(self, converter_func, direction: str) -> None:
+        """Internal conversion logic used by both directions"""
         if not self.config.enabled:
             return
         
@@ -58,7 +68,7 @@ class ReHebrew:
             return
         
         # Convert
-        converted, count = convert_to_hebrew(text)
+        converted, count = converter_func(text)
         
         if count == 0:
             self._notify("ReHebrew", "No convertible characters.", 2)
@@ -142,36 +152,43 @@ class ReHebrew:
         logo = self._tray.logo_image if self._tray else None
         threading.Thread(
             target=show_about_dialog,
-            args=(self.config.shortcut, logo),
+            args=(self.config.shortcut, self.config.shortcut_english, logo),
             daemon=True
         ).start()
     
     def _show_options(self, icon=None, item=None) -> None:
         """Show Options dialog in a separate thread"""
-        def on_save(new_shortcut: str, show_notifications: bool) -> None:
+        def on_save(new_shortcut: str, new_shortcut_english: str, show_notifications: bool) -> None:
             old_shortcut = self.config.shortcut
+            old_shortcut_english = self.config.shortcut_english
+            
             self.config.shortcut = new_shortcut
+            self.config.shortcut_english = new_shortcut_english
             self.config.show_notifications = show_notifications
             self.config.save()
             
+            # Update Hebrew hotkey if changed
             if new_shortcut != old_shortcut and self._hotkey_listener:
                 if self._hotkey_listener.update_shortcut(new_shortcut):
-                    self._notify(
-                        "ReHebrew",
-                        f"Shortcut changed to {new_shortcut.upper()}",
-                        3
-                    )
+                    self._notify("ReHebrew", f"Hebrew shortcut: {new_shortcut.upper()}", 3)
                 else:
-                    self._notify(
-                        "ReHebrew",
-                        f"Failed to set shortcut {new_shortcut.upper()}.\n"
-                        "It may be in use by another application.",
-                        5
-                    )
+                    self._notify("ReHebrew", f"Failed to set {new_shortcut.upper()}", 5)
+            
+            # Update English hotkey if changed
+            if new_shortcut_english != old_shortcut_english and self._hotkey_listener_english:
+                if self._hotkey_listener_english.update_shortcut(new_shortcut_english):
+                    self._notify("ReHebrew", f"English shortcut: {new_shortcut_english.upper()}", 3)
+                else:
+                    self._notify("ReHebrew", f"Failed to set {new_shortcut_english.upper()}", 5)
         
         threading.Thread(
             target=show_options_dialog,
-            args=(self.config.shortcut, self.config.show_notifications, on_save),
+            args=(
+                self.config.shortcut,
+                self.config.shortcut_english,
+                self.config.show_notifications,
+                on_save
+            ),
             daemon=True
         ).start()
     
@@ -180,17 +197,28 @@ class ReHebrew:
         self.running = False
         if self._hotkey_listener:
             self._hotkey_listener.stop()
+        if self._hotkey_listener_english:
+            self._hotkey_listener_english.stop()
         if self._tray:
             self._tray.stop()
     
     def run(self) -> None:
         """Start the application"""
-        # Start hotkey listener
+        # Start hotkey listener for Hebrew conversion
         self._hotkey_listener = HotkeyListener(
             self.config.shortcut,
-            self.do_conversion
+            self.do_conversion,
+            HOTKEY_ID
         )
         self._hotkey_listener.start()
+        
+        # Start hotkey listener for English conversion
+        self._hotkey_listener_english = HotkeyListener(
+            self.config.shortcut_english,
+            self.do_conversion_english,
+            HOTKEY_ID_ENGLISH
+        )
+        self._hotkey_listener_english.start()
         
         # Create tray icon
         self._tray = TrayIcon(
@@ -206,7 +234,9 @@ class ReHebrew:
         # Show startup notification
         self._notify(
             "ReHebrew",
-            f"Running in background.\nPress {self.config.shortcut.upper()} to convert.",
+            f"Running in background.\n"
+            f"{self.config.shortcut.upper()} → Hebrew\n"
+            f"{self.config.shortcut_english.upper()} → English",
             3
         )
         

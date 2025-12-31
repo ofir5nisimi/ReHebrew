@@ -10,7 +10,7 @@ from typing import Callable, Optional
 
 from .constants import (
     MOD_ALT, MOD_CONTROL, MOD_SHIFT, MOD_WIN, MOD_NOREPEAT,
-    WM_HOTKEY, HOTKEY_ID, VK_CODES
+    WM_HOTKEY, HOTKEY_ID, HOTKEY_ID_ENGLISH, VK_CODES
 )
 
 
@@ -55,16 +55,18 @@ class HotkeyListener:
     Runs in a separate thread to avoid blocking the main UI.
     """
     
-    def __init__(self, shortcut: str, callback: Callable):
+    def __init__(self, shortcut: str, callback: Callable, hotkey_id: int = HOTKEY_ID):
         """
         Initialize the hotkey listener.
         
         Args:
             shortcut: Shortcut string like "ctrl+shift+h"
             callback: Function to call when hotkey is pressed
+            hotkey_id: Unique ID for this hotkey (default: HOTKEY_ID)
         """
         self.shortcut = shortcut
         self.callback = callback
+        self.hotkey_id = hotkey_id
         self.running = False
         self._thread: Optional[threading.Thread] = None
     
@@ -108,7 +110,7 @@ class HotkeyListener:
             return
         
         # Register the hotkey
-        if not user32.RegisterHotKey(None, HOTKEY_ID, modifiers, vk):
+        if not user32.RegisterHotKey(None, self.hotkey_id, modifiers, vk):
             error = kernel32.GetLastError()
             print(f"Failed to register hotkey (error {error})")
             return
@@ -118,10 +120,10 @@ class HotkeyListener:
             while self.running:
                 # Use PeekMessage to allow checking self.running
                 if user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 1):  # PM_REMOVE = 1
-                    if msg.message == WM_HOTKEY and msg.wParam == HOTKEY_ID:
+                    if msg.message == WM_HOTKEY and msg.wParam == self.hotkey_id:
                         # Handle hotkey in a separate thread to avoid blocking
                         threading.Thread(target=self.callback, daemon=True).start()
                 else:
                     time.sleep(0.01)  # Small sleep to prevent CPU spinning
         finally:
-            user32.UnregisterHotKey(None, HOTKEY_ID)
+            user32.UnregisterHotKey(None, self.hotkey_id)
