@@ -154,13 +154,20 @@ class ReHebrew:
             self.config.show_notifications = show_notifications
             self.config.save()
             
-            if new_shortcut != old_shortcut:
-                self._notify(
-                    "ReHebrew",
-                    f"Shortcut changed to {new_shortcut.upper()}\n"
-                    "Please restart ReHebrew to apply.",
-                    5
-                )
+            if new_shortcut != old_shortcut and self._hotkey_listener:
+                if self._hotkey_listener.update_shortcut(new_shortcut):
+                    self._notify(
+                        "ReHebrew",
+                        f"Shortcut changed to {new_shortcut.upper()}",
+                        3
+                    )
+                else:
+                    self._notify(
+                        "ReHebrew",
+                        f"Failed to set shortcut {new_shortcut.upper()}.\n"
+                        "It may be in use by another application.",
+                        5
+                    )
         
         threading.Thread(
             target=show_options_dialog,

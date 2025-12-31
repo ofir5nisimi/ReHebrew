@@ -84,6 +84,21 @@ class HotkeyListener:
         if self._thread:
             self._thread.join(timeout=1.0)
     
+    def update_shortcut(self, new_shortcut: str) -> bool:
+        """
+        Update the hotkey to a new shortcut.
+        Stops the current listener and starts a new one.
+        
+        Args:
+            new_shortcut: New shortcut string like "ctrl+alt+h"
+            
+        Returns:
+            True if successfully updated
+        """
+        self.stop()
+        self.shortcut = new_shortcut
+        return self.start()
+    
     def _listen(self) -> None:
         """Internal method that runs in the listener thread"""
         modifiers, vk = parse_shortcut(self.shortcut)
